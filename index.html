@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据格式互转工具</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #1f2328;
+    --text-muted: #6b7280;
+    --text-faint: #9ca3af;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
+    --success: #0a7a4f;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --radius: 10px;
+
+    /* 语法高亮色 */
+    --c-key: #0a7a4f;
+    --c-string: #0a7a4f;
+    --c-number: #1d6feb;
+    --c-boolean: #b5530a;
+    --c-null: #9ca3af;
+    --c-punct: #9ca3af;
+    --c-tag: #7c3aed;
+  }
+  html.dark {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --border-strong: #484f58;
+    --text: #e6edf3;
+    --text-muted: #9198a1;
+    --text-faint: #6e7681;
+    --accent: #58a6ff;
+    --accent-hover: #79b8ff;
+    --accent-soft: #1a2332;
+    --danger: #f87171;
+    --danger-soft: #2a1a1c;
+    --success: #7ee787;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+
+    --c-key: #7ee787;
+    --c-string: #7ee787;
+    --c-number: #79c0ff;
+    --c-boolean: #ffa657;
+    --c-null: #8b949e;
+    --c-punct: #8b949e;
+    --c-tag: #d2a8ff;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- 页头 ---------- */
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; background: var(--panel);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 650; }
+  .logo .mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff; font-size: 16px; font-weight: 700; line-height: 1;
+  }
+  .logo .sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+  .spacer { flex: 1; }
+
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel);
+    color: var(--text-muted); cursor: pointer;
+    display: grid; place-items: center; transition: all .15s;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  header .icon-btn { border: none; background: transparent; }
+  header .icon-btn:hover { background: var(--bg); border-color: transparent; }
+
+  /* ---------- 工具栏 ---------- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 20px; background: var(--panel);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    font-size: 13px; cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--border-strong); background: var(--bg); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.ghost { border-color: transparent; color: var(--text-muted); }
+  .btn.ghost:hover { background: var(--bg); color: var(--text); }
+  .divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+  .seg {
+    display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .seg button {
+    height: 34px; padding: 0 11px; border: 0; background: var(--panel);
+    color: var(--text-muted); font-size: 12.5px; cursor: pointer;
+    border-right: 1px solid var(--border); transition: all .15s;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: var(--bg); color: var(--text); }
+  .seg button.active { background: var(--accent-soft); color: var(--accent); }
+
+  .stat { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+  .stat b { color: var(--text); font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-boolean); }
+  .dot.ok { background: var(--success); }
+
+  .root-tag-wrap {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .root-tag-wrap input {
+    width: 90px; height: 28px; padding: 0 8px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text); font-size: 12px;
+  }
+  .root-tag-wrap input:focus { outline: none; border-color: var(--accent); }
+  .root-tag-wrap.hidden { display: none; }
+
+  /* ---------- 主区域 / 双栏 ---------- */
+  main { flex: 1; overflow: hidden; padding: 14px 20px 18px; }
+  .converter {
+    display: flex; gap: 14px; height: 100%;
+    max-width: 1600px; margin: 0 auto;
+  }
+  .pane {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .pane-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: var(--bg);
+    border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .pane-head b { color: var(--text); font-weight: 600; }
+  .pane-body {
+    flex: 1; position: relative; min-height: 0;
+  }
+  .pane-body textarea, .pane-body pre {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: 0; margin: 0; padding: 14px;
+    background: var(--panel); color: var(--text);
+    font-family: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.7;
+    resize: none; outline: none;
+    white-space: pre; overflow: auto;
+  }
+  .pane-body pre { white-space: pre-wrap; word-break: break-word; }
+  .pane-body textarea::placeholder { color: var(--text-faint); }
+
+  /* 拖拽导入遮罩 */
+  .dropzone {
+    position: absolute; inset: 0; z-index: 5;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(239,246,255,.92);
+    border: 2px dashed var(--accent); border-radius: var(--radius);
+    color: var(--accent); text-align: center; padding: 20px;
+  }
+  html.dark .dropzone { background: rgba(26,35,50,.92); }
+  .dropzone.dragover { display: flex; }
+  .dropzone .big-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: grid; place-items: center; background: var(--accent-soft); margin-bottom: 12px;
+  }
+  .dropzone .big-icon svg { width: 26px; height: 26px; }
+  .dropzone h3 { margin: 0 0 6px; font-size: 16px; }
+  .dropzone p { margin: 0; font-size: 12.5px; opacity: .85; }
+
+  /* ---------- 错误展示 ---------- */
+  .error-box {
+    background: var(--danger-soft); border: 1px solid var(--danger);
+    border-radius: var(--radius); padding: 16px 18px; margin: 14px;
+  }
+  .error-box h3 { margin: 0 0 8px; color: var(--danger); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .error-box .msg { font-family: monospace; font-size: 12.5px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    width: 100%; max-width: 680px; max-height: 80vh;
+    background: var(--panel); border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+  .modal-head h3 { margin: 0; font-size: 15px; flex: 1; }
+  .modal-body { padding: 16px 20px; overflow: auto; }
+  .modal-body textarea {
+    width: 100%; min-height: 280px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text);
+    padding: 12px; font-family: monospace; font-size: 13px; line-height: 1.7; resize: vertical;
+  }
+  .modal-body textarea:focus { outline: none; border-color: var(--accent); }
+  .modal-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .url-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text);
+    padding: 11px 12px; font-family: monospace; font-size: 13px;
+  }
+  .url-input:focus { outline: none; border-color: var(--accent); }
+  .url-input:disabled { opacity: .6; }
+  .url-hint { margin-top: 12px; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
+
+  /* ---------- Toast ---------- */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--panel);
+    padding: 9px 16px; border-radius: 8px; font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    opacity: 0; pointer-events: none; transition: all .22s;
+    z-index: 200; display: flex; align-items: center; gap: 7px;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast svg { width: 15px; height: 15px; }
+
+  .hidden { display: none !important; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+  @media (max-width: 768px) {
+    header { padding: 12px 14px; }
+    .toolbar { padding: 8px 12px; gap: 6px; }
+    main { padding: 10px 12px 14px; }
+    .converter { flex-direction: column; }
+    .pane { min-height: 200px; }
+    .logo .sub { display: none; }
+    .btn { height: 32px; padding: 0 10px; font-size: 12.5px; }
+    .seg button { padding: 0 9px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="mark">&#x21c4;</div>
+    <div>
+      数据格式互转工具
+      <div class="sub">JSON · YAML · XML · CSV 一键转换</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <a class="icon-btn" href="https://github.com/wangruofeng/data-converter" target="_blank" rel="noopener noreferrer" title="查看 GitHub 源码" aria-label="GitHub 源码仓库">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.78 0 12.292c0 5.211 3.438 9.63 8.205 11.188.6.111.82-.254.82-.567 0-.28-.01-1.022-.015-2.005-3.338.711-4.042-1.582-4.042-1.582-.546-1.361-1.335-1.725-1.335-1.725-1.087-.731.084-.716.084-.716 1.205.082 1.838 1.215 1.838 1.215 1.07 1.803 2.809 1.282 3.495.981.108-.763.417-1.282.76-1.577-2.665-.295-5.466-1.309-5.466-5.827 0-1.287.465-2.339 1.235-3.164-.135-.297-.54-1.498.105-3.121 0 0 1.005-.316 3.3 1.209.96-.262 1.98-.392 3-.397 1.02.005 2.04.135 3 .397 2.28-1.525 3.285-1.209 3.285-1.209.645 1.623.24 2.824.12 3.121.765.825 1.23 1.877 1.23 3.164 0 4.53-2.805 5.527-5.475 5.817.42.354.81 1.077.81 2.182 0 1.578-.015 2.846-.015 3.229 0 .309.21.678.825.562C20.565 21.917 24 17.495 24 12.292 24 5.78 18.627.5 12 .5z"/></svg>
+  </a>
+  <button class="icon-btn" id="themeBtn" title="切换深浅色"></button>
+</header>
+
+<div class="toolbar">
+  <div class="seg" id="sourceSeg">
+    <button data-src="auto">自动</button>
+    <button data-src="json">JSON</button>
+    <button data-src="yaml">YAML</button>
+    <button data-src="xml">XML</button>
+    <button data-src="csv">CSV</button>
+  </div>
+
+  <button class="btn" id="swapBtn" title="交换输入/输出格式">&#x21c4;</button>
+
+  <div class="seg" id="targetSeg">
+    <button data-tgt="json">JSON</button>
+    <button data-tgt="yaml">YAML</button>
+    <button data-tgt="xml">XML</button>
+    <button data-tgt="csv">CSV</button>
+  </div>
+
+  <button class="btn primary" id="convertBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    转换
+  </button>
+
+  <div class="divider"></div>
+
+  <button class="btn" id="importBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    导入
+  </button>
+  <button class="btn" id="pasteBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+    粘贴
+  </button>
+  <button class="btn" id="urlBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    URL 导入
+  </button>
+  <button class="btn ghost" id="sampleBtn">示例</button>
+
+  <div class="divider"></div>
+
+  <button class="btn" id="copyBtn" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    复制结果
+  </button>
+  <button class="btn" id="downloadBtn" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    下载
+  </button>
+
+  <div class="spacer"></div>
+  <div class="stat" id="statBar">
+    <span class="dot"></span>
+    <span id="statFormat">自动 → JSON</span>
+    <span>·</span>
+    <span id="statInSize">0 B</span>
+    <span>→</span>
+    <span id="statOutSize">0 B</span>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".json,.yaml,.yml,.xml,.csv,.txt,application/json,application/xml,text/plain,text/csv" class="hidden">
+
+<main id="main">
+  <div class="converter">
+    <div class="pane input-pane">
+      <div class="pane-head">
+        <b>输入</b>
+        <span id="detectedLabel" class="hidden">检测到 <b id="detectedName">JSON</b></span>
+        <span class="spacer"></span>
+        <span class="root-tag-wrap hidden" id="rootTagWrap">
+          根标签 <input id="rootTagInput" value="root" placeholder="root" title="XML 输出时的根元素名称">
+        </span>
+      </div>
+      <div class="pane-body">
+        <textarea id="inputArea" spellcheck="false" placeholder="在此粘贴或输入 JSON / YAML / XML / CSV 数据…"></textarea>
+        <div class="dropzone" id="dropzone">
+          <div class="big-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+          </div>
+          <h3>释放以上传文件</h3>
+          <p>支持任意扩展名的文本文件</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane output-pane">
+      <div class="pane-head"><b>输出</b></div>
+      <div class="pane-body" id="outputBody">
+        <pre id="outputPre"><code id="outputCode"></code></pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- 粘贴 modal -->
+<div class="modal-backdrop" id="pasteModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>粘贴数据</h3>
+      <button class="icon-btn" id="pasteCloseBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <textarea id="pasteArea" placeholder="在此粘贴 JSON / YAML / XML / CSV 数据…" spellcheck="false"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="pasteCancelBtn">取消</button>
+      <button class="btn primary" id="pasteLoadBtn">导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- URL modal -->
+<div class="modal-backdrop" id="urlModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>URL 导入</h3>
+      <button class="icon-btn" id="urlCloseBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input id="urlInput" class="url-input" type="url" placeholder="https://example.com/data.json" spellcheck="false" autocomplete="off">
+      <div class="url-hint">输入返回数据的地址，按回车或点击下方按钮获取。<br>注意：目标服务器需允许跨域访问（CORS），否则浏览器会阻止读取响应。</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="urlCancelBtn">取消</button>
+      <button class="btn primary" id="urlLoadBtn">获取</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   数据格式互转工具 — JSON / YAML / XML / CSV
+   - 单文件、零依赖、纯前端
+   - 输入即自动转换（防抖 300ms）
+   - 格式自动检测 + 手动指定
+   ========================================================= */
+
+/* ---------- 通用工具 ---------- */
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escapeXml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+function byteLength(str) { try { return new Blob([str]).size; } catch { return str.length; } }
+function getType(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return 'array';
+  return typeof v;
+}
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return a === b;
+  const ta = getType(a), tb = getType(b);
+  if (ta !== tb) return false;
+  if (ta === 'array') {
+    if (a.length !== b.length) return false;
+    return a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (ta === 'object') {
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    return ka.every(k => kb.includes(k) && deepEqual(a[k], b[k]));
+  }
+  return false;
+}
+
+/* ---------- JSON 解析与序列化 ---------- */
+function parseJSON(text) {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const m = err.message.match(/position\s+(\d+)/i);
+    if (m) {
+      const p = parseInt(m[1], 10);
+      const before = text.slice(0, p);
+      const line = before.split('\n').length;
+      const col = p - before.lastIndexOf('\n');
+      throw new Error('JSON 解析失败：' + err.message + '\n位置：第 ' + line + ' 行，第 ' + col + ' 列');
+    }
+    throw new Error('JSON 解析失败：' + err.message);
+  }
+}
+function toJSON(value) {
+  return JSON.stringify(value, null, 2);
+}
+
+/* ---------- YAML 解析器（实用子集） ---------- */
+/* 以下 parseYAML / toYAML 直接复用 yaml-viewer 项目的手写实现，
+   覆盖块映射、块序列、嵌套、引号字符串、流式集合、块标量、行内注释等。 */
+function stripInlineComment(s, lineNum) {
+  let inSingle = false, inDouble = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i], prev = s[i - 1];
+    if (ch === "'" && !inDouble) inSingle = !inSingle;
+    else if (ch === '"' && !inSingle) {
+      if (prev !== '\\') inDouble = !inDouble;
+    } else if (ch === '#' && !inSingle && !inDouble) {
+      if (i === 0 || /\s/.test(s[i - 1])) return s.slice(0, i).trimEnd();
+      throw new Error('第 ' + lineNum + ' 行：行内注释的 # 前需要空白字符');
+    }
+  }
+  return s.trimEnd();
+}
+function findKeyColon(s) {
+  let inSingle = false, inDouble = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i], prev = s[i - 1];
+    if (ch === "'" && !inDouble) inSingle = !inSingle;
+    else if (ch === '"' && !inSingle) {
+      if (prev !== '\\') inDouble = !inDouble;
+    } else if (ch === ':' && !inSingle && !inDouble) {
+      if (i === s.length - 1 || s[i + 1] === ' ') return i;
+    }
+  }
+  return -1;
+}
+function looksLikeMappingStart(s) {
+  const trimmed = s.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return false;
+  return findKeyColon(trimmed) >= 0;
+}
+function parseQuotedString(s, lineNum) {
+  const quote = s[0];
+  const inner = s.slice(1, -1);
+  if (quote === "'") return inner.replace(/''/g, "'");
+  return inner.replace(/\\([nrt"\\])/g, (_, ch) => {
+    const map = { n: '\n', r: '\r', t: '\t', '"': '"', '\\': '\\' };
+    if (!(ch in map)) throw new Error('第 ' + lineNum + ' 行：不支持的转义序列 \\' + ch);
+    return map[ch];
+  });
+}
+function parseScalar(s, lineNum) {
+  s = s.trim();
+  if (s === '' || s === '~' || /^null$/i.test(s)) return null;
+  if (/^true$/i.test(s)) return true;
+  if (/^false$/i.test(s)) return false;
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return parseQuotedString(s, lineNum);
+  }
+  if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+  if (/^-?\d+\.\d+$/.test(s) || /^-?\d+\.\d+[eE][+-]?\d+$/.test(s) || /^-?\d+[eE][+-]?\d+$/.test(s)) {
+    return parseFloat(s);
+  }
+  return s;
+}
+function splitFlowItems(s, lineNum) {
+  const items = []; let current = '';
+  let inSingle = false, inDouble = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i], prev = s[i - 1];
+    if (ch === ',' && !inSingle && !inDouble) { items.push(current); current = ''; }
+    else {
+      if (ch === "'" && !inDouble) inSingle = !inSingle;
+      else if (ch === '"' && !inSingle) { if (prev !== '\\') inDouble = !inDouble; }
+      current += ch;
+    }
+  }
+  items.push(current);
+  return items.map(x => x.trim()).filter(x => x !== '');
+}
+function parseFlowArray(s, lineNum) {
+  if (!s.endsWith(']')) throw new Error('第 ' + lineNum + ' 行：流式数组未闭合');
+  return splitFlowItems(s.slice(1, -1), lineNum).map(item => parseScalar(item, lineNum));
+}
+function parseFlowObject(s, lineNum) {
+  if (!s.endsWith('}')) throw new Error('第 ' + lineNum + ' 行：流式对象未闭合');
+  const obj = {};
+  splitFlowItems(s.slice(1, -1), lineNum).forEach(item => {
+    const colonIdx = item.indexOf(':');
+    if (colonIdx < 0) throw new Error('第 ' + lineNum + ' 行：流式对象键值对缺少冒号');
+    obj[parseScalar(item.slice(0, colonIdx).trim(), lineNum)] = parseScalar(item.slice(colonIdx + 1).trim(), lineNum);
+  });
+  return obj;
+}
+function parseBlockScalar(rawLines, startLineIdx, baseIndent, indicator) {
+  const fold = indicator[0] === '>';
+  const chomp = indicator.slice(1);
+  let contentIndent = null, parts = [], j = startLineIdx + 1;
+  while (j < rawLines.length) {
+    const line = rawLines[j];
+    const m = line.match(/^(\s*)(.*)$/);
+    const indent = m[1].length, rest = m[2];
+    if (indent <= baseIndent && rest !== '' && !rest.startsWith('#')) break;
+    if (rest === '---' || rest === '...') break;
+    if (contentIndent === null && rest !== '') contentIndent = indent;
+    parts.push(contentIndent !== null ? line.slice(contentIndent) : '');
+    j++;
+  }
+  let result;
+  if (fold) {
+    result = ''; let k = 0;
+    while (k < parts.length) {
+      if (!parts[k].trim()) {
+        let blankCount = 0;
+        while (k < parts.length && !parts[k].trim()) { blankCount++; k++; }
+        result += '\n'.repeat(blankCount);
+      } else {
+        if (result && !result.endsWith('\n') && !result.endsWith(' ')) result += ' ';
+        result += parts[k]; k++;
+      }
+    }
+  } else {
+    result = parts.join('\n');
+  }
+  if (chomp === '-') result = result.replace(/\n+$/, '');
+  else if (chomp !== '+') { if (parts.length && !result.endsWith('\n')) result += '\n'; }
+  return { value: result, endRawLineIdx: j - 1 };
+}
+function parseValue(raw, stmts, i, baseIndent, rawLines) {
+  const trimmed = raw.trim();
+  if (/^[|>][+-]?$/.test(trimmed)) {
+    const startStmt = stmts[i];
+    const startLineIdx = startStmt.lineNum - 1;
+    const res = parseBlockScalar(rawLines, startLineIdx, baseIndent, trimmed);
+    let nextIdx = i + 1;
+    while (nextIdx < stmts.length && stmts[nextIdx].lineNum <= res.endRawLineIdx + 1) nextIdx++;
+    return { value: res.value, nextIdx };
+  }
+  if (trimmed.startsWith('[')) return { value: parseFlowArray(trimmed, stmts[i]?.lineNum || 0), nextIdx: i + 1 };
+  if (trimmed.startsWith('{')) return { value: parseFlowObject(trimmed, stmts[i]?.lineNum || 0), nextIdx: i + 1 };
+  return { value: parseScalar(trimmed, stmts[i]?.lineNum || 0), nextIdx: i + 1 };
+}
+function parseBlock(stmts, i, baseIndent, rawLines) {
+  if (i >= stmts.length) return { value: undefined, nextIdx: i };
+  const first = stmts[i];
+  const actualBase = first.indent > baseIndent ? first.indent : baseIndent;
+  if (first.kind === 'scalar') return parseValue(first.value, stmts, i, actualBase, rawLines);
+  if (first.kind === 'key') {
+    const obj = {}; let lastKey = null; let i2 = i;
+    while (i2 < stmts.length) {
+      const stmt = stmts[i2];
+      if (stmt.indent < actualBase) break;
+      if (stmt.indent > actualBase) {
+        if (!lastKey) throw new Error('第 ' + stmt.lineNum + ' 行：意外的缩进，没有待处理的键');
+        const child = parseBlock(stmts, i2, actualBase, rawLines);
+        obj[lastKey] = child.value; lastKey = null; i2 = child.nextIdx;
+        continue;
+      }
+      if (stmt.kind === 'key') {
+        if (lastKey) obj[lastKey] = null;
+        lastKey = stmt.key;
+        if (stmt.value) {
+          const val = parseValue(stmt.value, stmts, i2, actualBase, rawLines);
+          obj[lastKey] = val.value; lastKey = null; i2 = val.nextIdx;
+        } else i2++;
+      } else throw new Error('第 ' + stmt.lineNum + ' 行：对象上下文中应为键值对');
+    }
+    if (lastKey) obj[lastKey] = null;
+    return { value: obj, nextIdx: i2 };
+  }
+  if (first.kind === 'item') {
+    const arr = []; let pendingItem = false; let i2 = i;
+    while (i2 < stmts.length) {
+      const stmt = stmts[i2];
+      if (stmt.indent < actualBase) break;
+      if (stmt.indent > actualBase) {
+        if (!pendingItem) throw new Error('第 ' + stmt.lineNum + ' 行：意外的缩进，没有待处理的数组项');
+        const child = parseBlock(stmts, i2, actualBase, rawLines);
+        arr.push(child.value); pendingItem = false; i2 = child.nextIdx;
+        continue;
+      }
+      if (stmt.kind === 'item') {
+        if (pendingItem) arr.push(null);
+        if (stmt.value && looksLikeMappingStart(stmt.value)) {
+          const itemIndent = stmt.indent + 2;
+          const obj = {}; let lastKey = null; let itemIdx = i2;
+          const colonIdx = findKeyColon(stmt.value);
+          const firstKey = stmt.value.slice(0, colonIdx).trim();
+          const firstValue = stmt.value.slice(colonIdx + 1).trim();
+          lastKey = firstKey;
+          if (firstValue) {
+            const val = parseValue(firstValue, stmts, itemIdx, itemIndent, rawLines);
+            obj[lastKey] = val.value; lastKey = null; itemIdx = val.nextIdx;
+          } else itemIdx++;
+          while (itemIdx < stmts.length) {
+            const s = stmts[itemIdx];
+            if (s.indent < itemIndent) break;
+            if (s.indent > itemIndent) {
+              if (!lastKey) throw new Error('第 ' + s.lineNum + ' 行：意外的缩进，没有待处理的键');
+              const child = parseBlock(stmts, itemIdx, itemIndent, rawLines);
+              obj[lastKey] = child.value; lastKey = null; itemIdx = child.nextIdx;
+              continue;
+            }
+            if (s.kind === 'key') {
+              if (lastKey) obj[lastKey] = null;
+              lastKey = s.key;
+              if (s.value) {
+                const val = parseValue(s.value, stmts, itemIdx, itemIndent, rawLines);
+                obj[lastKey] = val.value; lastKey = null; itemIdx = val.nextIdx;
+              } else itemIdx++;
+            } else throw new Error('第 ' + s.lineNum + ' 行：对象上下文中应为键值对');
+          }
+          if (lastKey) obj[lastKey] = null;
+          arr.push(obj); pendingItem = false; i2 = itemIdx;
+          continue;
+        }
+        pendingItem = true;
+        if (stmt.value) {
+          const val = parseValue(stmt.value, stmts, i2, actualBase, rawLines);
+          arr.push(val.value); pendingItem = false; i2 = val.nextIdx;
+        } else i2++;
+      } else throw new Error('第 ' + stmt.lineNum + ' 行：数组上下文中应为 - 项目');
+    }
+    if (pendingItem) arr.push(null);
+    return { value: arr, nextIdx: i2 };
+  }
+  throw new Error('第 ' + first.lineNum + ' 行：无法识别的 YAML 结构');
+}
+function parseYAML(text) {
+  const rawLines = text.split(/\r?\n/);
+  const statements = []; let docCount = 0;
+  for (let i = 0; i < rawLines.length; i++) {
+    const lineNum = i + 1, line = rawLines[i];
+    const m = line.match(/^(\s*)(.*)$/);
+    const indentStr = m[1]; let content = m[2];
+    if (indentStr.includes('\t')) throw new Error('第 ' + lineNum + ' 行：YAML 缩进禁止使用 Tab，请使用空格');
+    const indent = indentStr.length;
+    if (!content) continue;
+    content = stripInlineComment(content, lineNum);
+    if (!content) continue;
+    if (content === '---' || content === '...') {
+      if (content === '---') docCount++;
+      statements.push({ lineNum, indent, kind: 'docsep', marker: content });
+      continue;
+    }
+    if (/[&*!]/.test(content)) throw new Error('第 ' + lineNum + ' 行：暂不支持锚点/别名/标签语法');
+    if (content.startsWith('- ') || content === '-') {
+      statements.push({ lineNum, indent, kind: 'item', value: content === '-' ? '' : content.slice(2).trimEnd() });
+      continue;
+    }
+    const colonIdx = findKeyColon(content);
+    if (colonIdx >= 0) {
+      statements.push({ lineNum, indent, kind: 'key', key: content.slice(0, colonIdx).trim(), value: content.slice(colonIdx + 1).trim() });
+      continue;
+    }
+    statements.push({ lineNum, indent, kind: 'scalar', value: content.trimEnd() });
+  }
+  let firstDocStart = 0;
+  for (let i = 0; i < statements.length; i++) {
+    if (statements[i].kind === 'docsep' && statements[i].marker === '---') { firstDocStart = i; break; }
+  }
+  let endIdx = statements.length;
+  for (let i = firstDocStart + 1; i < statements.length; i++) {
+    if (statements[i].kind === 'docsep' && statements[i].marker === '---') { endIdx = i; break; }
+  }
+  const docStatements = statements.slice(firstDocStart, endIdx);
+  while (docStatements.length && docStatements[0].kind === 'docsep') docStatements.shift();
+  while (docStatements.length && docStatements[docStatements.length - 1].kind === 'docsep') docStatements.pop();
+  if (docStatements.length === 0) throw new Error('未找到 YAML 内容');
+  const result = parseBlock(docStatements, 0, -1, rawLines);
+  return { data: result.value, multiDoc: docCount > 1 };
+}
+
+/* ---------- YAML 序列化器 ---------- */
+function needsQuoteValue(s) {
+  if (/^(null|true|false|~|Null|True|False|NULL|TRUE|FALSE)$/.test(s)) return true;
+  if (/^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return true;
+  if (/^[:\[\]{}#,|>&*!%@`]/.test(s)) return true;
+  if (/\s|#/.test(s)) return true;
+  return false;
+}
+function needsQuoteKey(s) {
+  if (needsQuoteValue(s)) return true;
+  if (/[:\[\]{}#,|>&*!%@`\s]/.test(s)) return true;
+  return false;
+}
+function quoteString(s) {
+  if (s.includes("'") && !s.includes('"')) return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  return "'" + s.replace(/'/g, "''") + "'";
+}
+function stringScalar(s, indent) {
+  if (s === '') return "''";
+  if (s.includes('\n')) {
+    const prefix = ' '.repeat(indent);
+    return '|\n' + s.split('\n').map(l => prefix + '  ' + l).join('\n');
+  }
+  if (needsQuoteValue(s)) return quoteString(s);
+  return s;
+}
+function stringifyYAML(value, indent) {
+  const prefix = ' '.repeat(indent);
+  if (value === null) return prefix + 'null';
+  if (typeof value === 'boolean') return prefix + String(value);
+  if (typeof value === 'number') return prefix + String(value);
+  if (typeof value === 'string') return prefix + stringScalar(value, indent);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return prefix + '[]';
+    return value.map(item => {
+      if (item !== null && typeof item === 'object') {
+        const lines = stringifyYAML(item, indent + 2).split('\n');
+        lines[0] = prefix + '- ' + lines[0].slice(indent + 2);
+        return lines.join('\n');
+      }
+      return prefix + '- ' + stringifyYAML(item, 0).trimStart();
+    }).join('\n');
+  }
+  const keys = Object.keys(value);
+  if (keys.length === 0) return prefix + '{}';
+  return keys.map(k => {
+    const keyStr = needsQuoteKey(k) ? quoteString(k) : k;
+    const v = value[k];
+    if (v !== null && typeof v === 'object') return prefix + keyStr + ':\n' + stringifyYAML(v, indent + 2);
+    return prefix + keyStr + ': ' + stringifyYAML(v, 0).trimStart();
+  }).join('\n');
+}
+function toYAML(value) { return stringifyYAML(value, 0); }
+
+/* ---------- CSV 解析器（RFC 4180 + 分隔符检测） ---------- */
+function parseCSV(text, delimiter) {
+  if (text == null) return [];
+  text = String(text);
+  const rows = []; let row = [], field = '', inQuotes = false;
+  function pushField() { row.push(field); field = ''; }
+  function pushRow() { rows.push(row); row = []; }
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], next = text[i + 1];
+    if (inQuotes) {
+      if (c === '"') {
+        if (next === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === delimiter) pushField();
+      else if (c === '\r') { pushField(); pushRow(); if (next === '\n') i++; }
+      else if (c === '\n') { pushField(); pushRow(); }
+      else field += c;
+    }
+  }
+  if (inQuotes) { /* 未闭合引号时宽容处理 */ }
+  pushField();
+  const lastHasContent = row.some(cell => cell !== '');
+  if (lastHasContent) pushRow();
+  while (rows.length > 0) {
+    const last = rows[rows.length - 1];
+    if (last.length === 0 || last.every(cell => cell === '')) rows.pop();
+    else break;
+  }
+  return rows;
+}
+function detectDelimiter(text) {
+  if (text == null) return ',';
+  text = String(text);
+  const candidates = [',', '\t', ';'];
+  const firstLineEnd = text.search(/\r?\n|\r/);
+  const body = firstLineEnd === -1 ? '' : text.slice(firstLineEnd + 1);
+  if (!body) return ',';
+  let best = ',', bestCount = -1;
+  for (const d of candidates) {
+    let count = 0, inQuotes = false;
+    for (let i = 0; i < body.length; i++) {
+      const c = body[i];
+      if (c === '"') {
+        if (body[i + 1] === '"') i++;
+        else inQuotes = !inQuotes;
+      } else if (!inQuotes && c === d) count++;
+    }
+    if (count > bestCount) { bestCount = count; best = d; }
+  }
+  return best;
+}
+function rowsToObjects(rows) {
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h, i) => h === '' ? '列' + (i + 1) : h);
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+    return obj;
+  });
+}
+function parseCSVData(text) {
+  const delim = detectDelimiter(text);
+  const rows = parseCSV(text, delim);
+  if (rows.length === 0) throw new Error('未能解析出任何 CSV 行');
+  const baseCols = rows[0].length;
+  if (baseCols === 0) throw new Error('首行没有解析出任何列');
+  let bad = 0;
+  for (let i = 1; i < rows.length; i++) if (rows[i].length !== baseCols) bad++;
+  if (rows.length > 1 && bad / (rows.length - 1) > 0.5) throw new Error('列数严重不一致，请检查分隔符或文件格式');
+  return rowsToObjects(rows);
+}
+function escapeCsvField(field) {
+  const s = String(field == null ? '' : field);
+  if (s.includes(',') || s.includes('"') || s.includes('\r') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function toCSV(data) {
+  if (!Array.isArray(data)) throw new Error('仅对象数组可转 CSV');
+  if (data.length === 0) return '';
+  if (!data.every(item => item !== null && typeof item === 'object' && !Array.isArray(item))) throw new Error('仅对象数组可转 CSV');
+  const headers = [...new Set(data.flatMap(Object.keys))];
+  const lines = [headers.map(escapeCsvField).join(',')];
+  data.forEach(obj => {
+    lines.push(headers.map(h => escapeCsvField(obj[h] !== undefined ? obj[h] : '')).join(','));
+  });
+  return lines.join('\r\n');
+}
+
+/* ---------- XML 解析（DOMParser）与序列化 ---------- */
+const XML_NODE = { ELEMENT_NODE: 1, TEXT_NODE: 3, CDATA_SECTION_NODE: 4 };
+function xmlToObject(text) {
+  if (typeof DOMParser === 'undefined') throw new Error('当前环境不支持 DOMParser，无法解析 XML');
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  const err = doc.querySelector('parsererror');
+  if (err) {
+    const msg = err.textContent.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 4).join('\n');
+    throw new Error(msg || 'XML 解析失败');
+  }
+  if (!doc.documentElement) throw new Error('未找到根元素');
+  return elementToObject(doc.documentElement);
+}
+function elementToObject(el) {
+  const attrs = Array.from(el.attributes);
+  const childNodes = Array.from(el.childNodes).filter(n => {
+    if (n.nodeType === XML_NODE.TEXT_NODE) return n.nodeValue.trim() !== '';
+    return n.nodeType === XML_NODE.ELEMENT_NODE || n.nodeType === XML_NODE.CDATA_SECTION_NODE;
+  });
+  if (attrs.length === 0 && childNodes.length === 0) return '';
+  if (attrs.length === 0 && childNodes.length === 1 &&
+      (childNodes[0].nodeType === XML_NODE.TEXT_NODE || childNodes[0].nodeType === XML_NODE.CDATA_SECTION_NODE)) {
+    return childNodes[0].nodeValue;
+  }
+  const obj = {};
+  attrs.forEach(attr => { obj['@_' + attr.name] = attr.value; });
+  if (childNodes.length === 1 &&
+      (childNodes[0].nodeType === XML_NODE.TEXT_NODE || childNodes[0].nodeType === XML_NODE.CDATA_SECTION_NODE)) {
+    obj['#text'] = childNodes[0].nodeValue;
+    return obj;
+  }
+  const groups = {};
+  childNodes.forEach(child => {
+    if (child.nodeType === XML_NODE.ELEMENT_NODE) {
+      if (!groups[child.tagName]) groups[child.tagName] = [];
+      groups[child.tagName].push(elementToObject(child));
+    } else {
+      if (!groups['#text']) groups['#text'] = [];
+      groups['#text'].push(child.nodeValue);
+    }
+  });
+  Object.entries(groups).forEach(([name, values]) => {
+    if (name === '#text') {
+      const combined = values.join('').trim();
+      if (combined) obj['#text'] = combined;
+    } else {
+      obj[name] = values.length === 1 ? values[0] : values;
+    }
+  });
+  return obj;
+}
+function sanitizeXmlName(name) {
+  let s = String(name).replace(/[^\p{L}\p{N}_:\-\.]/gu, '_').replace(/^[^\p{L}_]+/u, '_');
+  return s || 'tag';
+}
+function objectToXml(value, indent) {
+  const prefix = '  '.repeat(indent);
+  if (value === null || value === undefined) return prefix + '<null/>';
+  const t = getType(value);
+  if (t === 'boolean' || t === 'number') return prefix + '<value>' + String(value) + '</value>';
+  if (t === 'string') return prefix + '<value>' + escapeXml(value) + '</value>';
+  if (t === 'array') {
+    if (value.length === 0) return prefix + '<item/>';
+    return value.map(item => prefix + '<item>' + objectToXml(item, 0).trim() + '</item>').join('\n');
+  }
+  return Object.entries(value).map(([k, v]) => {
+    const tag = sanitizeXmlName(k);
+    const tv = getType(v);
+    if (tv === 'null' || v === undefined) return prefix + '<' + tag + '/>';
+    if (tv === 'boolean' || tv === 'number') return prefix + '<' + tag + '>' + String(v) + '</' + tag + '>';
+    if (tv === 'string') return prefix + '<' + tag + '>' + escapeXml(v) + '</' + tag + '>';
+    return prefix + '<' + tag + '>\n' + objectToXml(v, indent + 1) + '\n' + prefix + '</' + tag + '>';
+  }).join('\n');
+}
+function toXML(value, rootTag) {
+  const tag = sanitizeXmlName(rootTag || 'root');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<' + tag + '>\n' + objectToXml(value, 1) + '\n</' + tag + '>';
+}
+
+/* ---------- 格式自动检测 ---------- */
+function detectFormat(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  // JSON：以 { 或 [ 开头且能解析
+  if (/^[\{\[]/.test(trimmed)) {
+    try { JSON.parse(trimmed); return 'json'; } catch {}
+  }
+
+  // XML：以 < 开头且能解析
+  if (/^</.test(trimmed)) {
+    try {
+      if (typeof DOMParser !== 'undefined') {
+        const doc = new DOMParser().parseFromString(trimmed, 'text/xml');
+        if (!doc.querySelector('parsererror')) return 'xml';
+      }
+    } catch {}
+  }
+
+  // YAML：含键值对或 - 项目行
+  const lines = trimmed.split(/\r?\n/);
+  const hasYamlMarker = lines.some(line => {
+    const t = line.trim();
+    if (t.startsWith('#')) return false;
+    return /^- /.test(t) || /^[^#:]+: /.test(t) || /^[^#:]+:$/.test(t);
+  });
+  if (hasYamlMarker) {
+    try { parseYAML(trimmed); return 'yaml'; } catch {}
+  }
+
+  // CSV：多行且含一致分隔符
+  const csvLines = trimmed.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (csvLines.length >= 2) {
+    const delim = detectDelimiter(trimmed);
+    const rows = parseCSV(trimmed, delim);
+    if (rows.length >= 2 && rows[0].length > 1) {
+      const baseCols = rows[0].length;
+      const consistent = rows.slice(1).every(r => r.length === baseCols);
+      if (consistent) return 'csv';
+    }
+  }
+
+  return null;
+}
+
+/* ---------- 统一转换入口 ---------- */
+const FORMAT_LABELS = { json: 'JSON', yaml: 'YAML', xml: 'XML', csv: 'CSV', auto: '自动' };
+const FORMAT_EXTENSIONS = { json: 'json', yaml: 'yaml', xml: 'xml', csv: 'csv' };
+
+function parseByFormat(text, format) {
+  text = text.trim();
+  if (format === 'json') return parseJSON(text);
+  if (format === 'yaml') return parseYAML(text).data;
+  if (format === 'xml') return xmlToObject(text);
+  if (format === 'csv') return parseCSVData(text);
+  throw new Error('不支持的源格式：' + format);
+}
+function serializeByFormat(data, format, options) {
+  if (format === 'json') return toJSON(data);
+  if (format === 'yaml') return toYAML(data);
+  if (format === 'xml') return toXML(data, options && options.rootTag);
+  if (format === 'csv') return toCSV(data);
+  throw new Error('不支持的目标格式：' + format);
+}
+
+/* =========================================================
+   以下代码依赖 DOM，仅在浏览器环境执行
+   ========================================================= */
+if (typeof document !== 'undefined' && document.getElementById) {
+
+const $ = (s) => document.querySelector(s);
+const state = {
+  sourceFormat: 'auto',
+  targetFormat: 'json',
+  detectedFormat: null,
+  fileName: 'data',
+  debounceTimer: null
+};
+
+let toastTimer;
+function showToast(msg, ok) {
+  if (ok === undefined) ok = true;
+  const t = $('#toast');
+  t.innerHTML = (ok
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  ) + '<span>' + escapeHtml(msg) + '</span>';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch {}
+  document.body.removeChild(ta);
+  return ok;
+}
+async function copyAndToast(text, msg) {
+  if (await copyText(text)) showToast(msg);
+  else showToast('复制失败', false);
+}
+
+/* ---------- 界面状态 ---------- */
+function setSourceFormat(fmt) {
+  state.sourceFormat = fmt;
+  document.querySelectorAll('#sourceSeg button').forEach(b => b.classList.toggle('active', b.dataset.src === fmt));
+  updateDetectedLabel();
+  scheduleConvert();
+}
+function setTargetFormat(fmt) {
+  state.targetFormat = fmt;
+  document.querySelectorAll('#targetSeg button').forEach(b => b.classList.toggle('active', b.dataset.tgt === fmt));
+  $('#rootTagWrap').classList.toggle('hidden', fmt !== 'xml');
+  scheduleConvert();
+}
+function updateDetectedLabel() {
+  const label = $('#detectedLabel');
+  const name = $('#detectedName');
+  if (state.sourceFormat === 'auto' && state.detectedFormat) {
+    name.textContent = FORMAT_LABELS[state.detectedFormat];
+    label.classList.remove('hidden');
+  } else {
+    label.classList.add('hidden');
+  }
+}
+function updateStats(detected, inSize, outSize, ok) {
+  const effective = state.sourceFormat === 'auto' ? (detected || 'auto') : state.sourceFormat;
+  $('#statFormat').textContent = FORMAT_LABELS[effective] + ' → ' + FORMAT_LABELS[state.targetFormat];
+  $('#statInSize').textContent = formatSize(inSize);
+  $('#statOutSize').textContent = formatSize(outSize);
+  $('#statBar .dot').classList.toggle('ok', !!ok);
+}
+
+/* ---------- 转换核心 ---------- */
+function showOutput(text, ok) {
+  const pre = $('#outputPre');
+  const code = $('#outputCode');
+  if (ok) {
+    code.textContent = text;
+    pre.classList.remove('hidden');
+    $('#copyBtn').disabled = false;
+    $('#downloadBtn').disabled = false;
+  } else {
+    pre.classList.add('hidden');
+    $('#copyBtn').disabled = true;
+    $('#downloadBtn').disabled = true;
+  }
+}
+function showErrorBox(msg) {
+  const body = $('#outputBody');
+  // 保留 pre，追加错误框
+  let box = body.querySelector('.error-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'error-box';
+    body.appendChild(box);
+  }
+  box.innerHTML = '<h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> 转换失败</h3>' +
+    '<div class="msg">' + escapeHtml(msg) + '</div>';
+  box.classList.remove('hidden');
+  showOutput('', false);
+}
+function clearErrorBox() {
+  const box = $('#outputBody .error-box');
+  if (box) box.classList.add('hidden');
+}
+
+function doConvert() {
+  const text = $('#inputArea').value;
+  const inSize = byteLength(text);
+  if (!text.trim()) {
+    showOutput('', true);
+    updateStats(null, 0, 0, true);
+    state.detectedFormat = null;
+    updateDetectedLabel();
+    clearErrorBox();
+    $('#copyBtn').disabled = true;
+    $('#downloadBtn').disabled = true;
+    return;
+  }
+
+  let effectiveSource = state.sourceFormat;
+  if (effectiveSource === 'auto') {
+    const detected = detectFormat(text);
+    if (!detected) {
+      state.detectedFormat = null;
+      updateDetectedLabel();
+      showErrorBox('无法自动识别输入格式，请手动选择 JSON / YAML / XML / CSV。');
+      updateStats(null, inSize, 0, false);
+      return;
+    }
+    state.detectedFormat = detected;
+    effectiveSource = detected;
+  } else {
+    state.detectedFormat = null;
+  }
+  updateDetectedLabel();
+
+  let data;
+  try {
+    data = parseByFormat(text, effectiveSource);
+  } catch (err) {
+    showErrorBox((FORMAT_LABELS[effectiveSource] || effectiveSource) + ' 解析错误：' + err.message);
+    updateStats(effectiveSource, inSize, 0, false);
+    return;
+  }
+
+  try {
+    const options = state.targetFormat === 'xml' ? { rootTag: $('#rootTagInput').value.trim() || 'root' } : undefined;
+    const output = serializeByFormat(data, state.targetFormat, options);
+    clearErrorBox();
+    showOutput(output, true);
+    updateStats(effectiveSource, inSize, byteLength(output), true);
+  } catch (err) {
+    showErrorBox(err.message);
+    updateStats(effectiveSource, inSize, 0, false);
+  }
+}
+function scheduleConvert() {
+  clearTimeout(state.debounceTimer);
+  state.debounceTimer = setTimeout(doConvert, 300);
+}
+
+/* ---------- 格式示例 ---------- */
+const SAMPLES = {
+  json: JSON.stringify({
+    "名称": "数据格式互转工具",
+    "版本": "1.0.0",
+    "启用": true,
+    "计数": 42,
+    "标签": ["JSON", "YAML", "XML", "CSV"],
+    "维护者": [
+      { "姓名": "张三", "角色": "前端" },
+      { "姓名": "李四", "角色": "后端" }
+    ]
+  }, null, 2),
+  yaml: `名称: 数据格式互转工具
+版本: 1.0.0
+启用: true
+计数: 42
+标签:
+  - JSON
+  - YAML
+  - XML
+  - CSV
+维护者:
+  - 姓名: 张三
+    角色: 前端
+  - 姓名: 李四
+    角色: 后端
+`,
+  xml: `<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <名称>数据格式互转工具</名称>
+  <版本>1.0.0</版本>
+  <启用>true</启用>
+  <计数>42</计数>
+  <标签>
+    <item>JSON</item>
+    <item>YAML</item>
+    <item>XML</item>
+    <item>CSV</item>
+  </标签>
+  <维护者>
+    <item>
+      <姓名>张三</姓名>
+      <角色>前端</角色>
+    </item>
+    <item>
+      <姓名>李四</姓名>
+      <角色>后端</角色>
+    </item>
+  </维护者>
+</root>`,
+  csv: `名称,版本,启用,计数
+数据格式互转工具,1.0.0,true,42
+示例行,false,0
+`
+};
+
+function loadSample() {
+  const fmt = state.sourceFormat === 'auto' ? 'json' : state.sourceFormat;
+  $('#inputArea').value = SAMPLES[fmt];
+  scheduleConvert();
+  showToast('已加载 ' + FORMAT_LABELS[fmt] + ' 示例');
+}
+
+/* ---------- 文件 / 粘贴 / URL 导入 ---------- */
+function setFileName(name, ext) {
+  if (!name) { state.fileName = 'data'; return; }
+  let base = name.replace(/\.[^.]+$/, '').trim();
+  base = base.replace(/[\\/:*?"<>|]/g, '_') || 'data';
+  state.fileName = base;
+}
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    $('#inputArea').value = ev.target.result;
+    setFileName(file.name);
+    scheduleConvert();
+    showToast('已导入：' + file.name);
+  };
+  reader.onerror = () => showToast('读取文件失败', false);
+  reader.readAsText(file, 'utf-8');
+}
+function urlToFileName(u) {
+  const last = (() => { try { return decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || ''); } catch { return ''; } })();
+  if (last) return /\.[a-z0-9]+$/i.test(last) ? last : last + '.txt';
+  return (u.hostname || 'url') + '.txt';
+}
+async function loadFromUrl(rawUrl) {
+  const input = (rawUrl || '').trim();
+  if (!input) { showToast('请输入 URL', false); return; }
+  let parsed;
+  try { parsed = new URL(input); }
+  catch { showToast('URL 格式无效', false); return; }
+  if (!/^https?:$/.test(parsed.protocol)) { showToast('仅支持 http / https 地址', false); return; }
+
+  const btn = $('#urlLoadBtn');
+  btn.disabled = true; btn.textContent = '加载中…'; $('#urlInput').disabled = true;
+  try {
+    const res = await fetch(input, { redirect: 'follow', headers: { 'Accept': 'application/json, application/xml, application/x-yaml, text/csv, text/plain, */*' } });
+    if (!res.ok) { showToast('请求失败：HTTP ' + res.status, false); return; }
+    const text = await res.text();
+    const name = urlToFileName(parsed);
+    $('#inputArea').value = text;
+    setFileName(name);
+    closeUrlModal();
+    scheduleConvert();
+    showToast('已 URL 导入：' + name);
+  } catch (err) {
+    showToast('无法获取：网络错误或目标未允许跨域访问（CORS）', false);
+  } finally {
+    btn.disabled = false; btn.textContent = '获取'; $('#urlInput').disabled = false;
+  }
+}
+
+/* ---------- Modal ---------- */
+function openPasteModal() {
+  $('#pasteArea').value = '';
+  $('#pasteModal').classList.add('show');
+  setTimeout(() => $('#pasteArea').focus(), 50);
+}
+function closePasteModal() { $('#pasteModal').classList.remove('show'); }
+function openUrlModal() {
+  $('#urlInput').value = '';
+  $('#urlModal').classList.add('show');
+  setTimeout(() => $('#urlInput').focus(), 50);
+}
+function closeUrlModal() { $('#urlModal').classList.remove('show'); }
+
+/* ---------- 下载 ---------- */
+function downloadResult() {
+  const text = $('#outputCode').textContent;
+  if (!text) return;
+  const ext = FORMAT_EXTENSIONS[state.targetFormat];
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = state.fileName + '.' + ext;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('已下载：' + a.download + '（' + formatSize(byteLength(text)) + '）');
+}
+
+/* ---------- 主题切换 ---------- */
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+function setTheme(dark) {
+  document.documentElement.classList.toggle('dark', dark);
+  const btn = $('#themeBtn');
+  btn.innerHTML = dark ? SUN : MOON;
+  btn.title = dark ? '切换到浅色' : '切换到深色';
+  try { localStorage.setItem('dc-theme', dark ? 'dark' : 'light'); } catch {}
+}
+
+/* ---------- 事件绑定 ---------- */
+$('#sourceSeg').addEventListener('click', (e) => {
+  if (e.target.dataset.src) setSourceFormat(e.target.dataset.src);
+});
+$('#targetSeg').addEventListener('click', (e) => {
+  if (e.target.dataset.tgt) setTargetFormat(e.target.dataset.tgt);
+});
+$('#convertBtn').addEventListener('click', doConvert);
+$('#swapBtn').addEventListener('click', () => {
+  const oldSource = state.sourceFormat;
+  const oldTarget = state.targetFormat;
+  const input = $('#inputArea').value;
+  let newSource = oldTarget;
+  let newTarget = oldSource;
+  if (oldSource === 'auto') {
+    // 尝试把当前检测到的格式作为新目标
+    const detected = detectFormat(input);
+    newTarget = detected || 'json';
+  }
+  // 避免目标变成 auto
+  if (newTarget === 'auto') newTarget = 'json';
+  setSourceFormat(newSource);
+  setTargetFormat(newTarget);
+});
+$('#inputArea').addEventListener('input', scheduleConvert);
+$('#rootTagInput').addEventListener('input', scheduleConvert);
+
+$('#importBtn').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) readFile(file);
+  e.target.value = '';
+});
+$('#pasteBtn').addEventListener('click', openPasteModal);
+$('#pasteCloseBtn').addEventListener('click', closePasteModal);
+$('#pasteCancelBtn').addEventListener('click', closePasteModal);
+$('#pasteLoadBtn').addEventListener('click', () => {
+  $('#inputArea').value = $('#pasteArea').value;
+  setFileName('pasted');
+  closePasteModal();
+  scheduleConvert();
+});
+$('#urlBtn').addEventListener('click', openUrlModal);
+$('#urlCloseBtn').addEventListener('click', closeUrlModal);
+$('#urlCancelBtn').addEventListener('click', closeUrlModal);
+$('#urlLoadBtn').addEventListener('click', () => loadFromUrl($('#urlInput').value));
+$('#urlInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadFromUrl($('#urlInput').value); });
+$('#sampleBtn').addEventListener('click', loadSample);
+$('#copyBtn').addEventListener('click', async () => {
+  const text = $('#outputCode').textContent;
+  if (text) await copyAndToast(text, '已复制转换结果');
+});
+$('#downloadBtn').addEventListener('click', downloadResult);
+$('#themeBtn').addEventListener('click', () => setTheme(!document.documentElement.classList.contains('dark')));
+
+/* 拖拽上传 */
+const dropzone = $('#dropzone');
+let dragCounter = 0;
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+  document.body.addEventListener(evt, (e) => e.preventDefault());
+});
+const inputPane = $('.input-pane');
+inputPane.addEventListener('dragenter', (e) => {
+  e.preventDefault(); dragCounter++;
+  dropzone.classList.add('dragover');
+});
+inputPane.addEventListener('dragover', (e) => e.preventDefault());
+inputPane.addEventListener('dragleave', (e) => {
+  e.preventDefault(); dragCounter--;
+  if (dragCounter <= 0) { dragCounter = 0; dropzone.classList.remove('dragover'); }
+});
+inputPane.addEventListener('drop', (e) => {
+  e.preventDefault(); dragCounter = 0; dropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+
+/* Modal 点击外部关闭 */
+$('#pasteModal').addEventListener('click', (e) => { if (e.target.id === 'pasteModal') closePasteModal(); });
+$('#urlModal').addEventListener('click', (e) => { if (e.target.id === 'urlModal') closeUrlModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePasteModal(); closeUrlModal(); } });
+
+/* 初始化 */
+try {
+  const saved = localStorage.getItem('dc-theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(saved ? saved === 'dark' : prefersDark);
+} catch { setTheme(false); }
+setSourceFormat('auto');
+setTargetFormat('json');
+updateStats(null, 0, 0, true);
+
+} // end DOM guard
+</script>
+</body>
+</html>
